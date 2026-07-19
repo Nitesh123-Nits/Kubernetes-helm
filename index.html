@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Manifest — A Field Guide to Kubernetes &amp; Helm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/base16/tomorrow-night.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+
+<style>
+:root{
+  --bg-deep:#0A1520;
+  --bg-panel:#0F1E2E;
+  --bg-raised:#152A3D;
+  --bg-card:#122236;
+  --line:#1F3549;
+  --line-soft:#182C40;
+  --text:#E7EEF4;
+  --text-dim:#93A9BD;
+  --text-faint:#5D7488;
+  --accent:#FF9455;
+  --accent-dim:#C97645;
+  --teal:#3FD9C7;
+  --blue:#5B92FF;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'IBM Plex Sans',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+  --sidebar-w:280px;
+}
+html.light{
+  --bg-deep:#F3F1EB;
+  --bg-panel:#FFFFFF;
+  --bg-raised:#FBFAF6;
+  --bg-card:#FFFFFF;
+  --line:#DDD7C9;
+  --line-soft:#E7E2D4;
+  --text:#182430;
+  --text-dim:#5B6875;
+  --text-faint:#8B95A0;
+  --accent:#C25A22;
+  --accent-dim:#C25A22;
+  --teal:#0E8C7B;
+  --blue:#2C5FCC;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--bg-deep);
+  color:var(--text);
+  font-family:var(--font-body);
+  line-height:1.6;
+  transition:background .25s ease,color .25s ease;
+}
+::selection{background:var(--accent);color:#0A1520;}
+
+/* blueprint texture */
+.blueprint-bg{
+  position:fixed;inset:0;z-index:-1;
+  background-image:
+    linear-gradient(var(--line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+  background-size:44px 44px;
+  opacity:.35;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+}
+
+a{color:inherit;}
+code, pre{font-family:var(--font-mono);}
+
+/* ============ TOP BAR ============ */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;
+  background:color-mix(in srgb, var(--bg-deep) 88%, transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.brand{
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--font-display);font-weight:600;font-size:1.05rem;
+  letter-spacing:.02em;
+}
+.brand .stamp{
+  width:30px;height:30px;border:1.5px solid var(--accent);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--accent);font-size:.7rem;font-weight:700;font-family:var(--font-mono);
+  transform:rotate(-8deg);
+}
+.topbar-right{display:flex;align-items:center;gap:14px;}
+.search-box{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg-panel);border:1px solid var(--line);border-radius:8px;
+  padding:7px 12px;min-width:200px;
+}
+.search-box input{
+  background:none;border:none;outline:none;color:var(--text);font-family:var(--font-body);
+  font-size:.85rem;width:100%;
+}
+.search-box input::placeholder{color:var(--text-faint);}
+.theme-toggle{
+  background:var(--bg-panel);border:1px solid var(--line);border-radius:8px;
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--text-dim);
+}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent-dim);}
+.menu-toggle{
+  display:none;background:var(--bg-panel);border:1px solid var(--line);border-radius:8px;
+  width:36px;height:36px;color:var(--text);cursor:pointer;
+}
+
+/* ============ LAYOUT ============ */
+.shell{display:flex;max-width:1440px;margin:0 auto;}
+.sidebar{
+  width:var(--sidebar-w);flex-shrink:0;
+  position:sticky;top:65px;
+  height:calc(100vh - 65px);
+  overflow-y:auto;
+  padding:22px 14px 60px 24px;
+  border-right:1px solid var(--line);
+}
+.sidebar::-webkit-scrollbar{width:6px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+.manifest-label{
+  font-family:var(--font-mono);font-size:.68rem;letter-spacing:.14em;
+  color:var(--text-faint);text-transform:uppercase;margin:22px 0 8px;
+  display:flex;align-items:center;gap:8px;
+}
+.manifest-label:first-child{margin-top:0;}
+.manifest-label::after{content:"";flex:1;height:1px;background:var(--line);}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 10px;border-radius:6px;
+  font-size:.86rem;color:var(--text-dim);text-decoration:none;
+  cursor:pointer;transition:background .15s, color .15s;
+  border-left:2px solid transparent;
+}
+.nav-item .tag{
+  font-family:var(--font-mono);font-size:.65rem;color:var(--text-faint);
+  min-width:34px;
+}
+.nav-item:hover{background:var(--bg-card);color:var(--text);}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--bg-card);}
+
+.main{flex:1;min-width:0;padding:0 40px 100px;}
+
+/* ============ HERO ============ */
+.hero{
+  padding:80px 0 50px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+}
+.hero-eyebrow{
+  font-family:var(--font-mono);font-size:.75rem;letter-spacing:.16em;
+  color:var(--teal);text-transform:uppercase;margin-bottom:18px;
+  display:flex;align-items:center;gap:10px;
+}
+.hero-eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);}
+.hero h1{
+  font-family:var(--font-display);font-weight:700;
+  font-size:clamp(2.4rem,5vw,4.2rem);line-height:1.02;margin:0 0 22px;
+  letter-spacing:-.01em;
+  max-width:820px;
+}
+.hero h1 em{font-style:normal;color:var(--accent);}
+.hero p.lead{
+  font-size:1.12rem;color:var(--text-dim);max-width:620px;margin:0 0 30px;
+}
+.hero-meta{display:flex;gap:28px;flex-wrap:wrap;margin-top:36px;}
+.hero-meta .stat{border-left:2px solid var(--line);padding-left:14px;}
+.hero-meta .stat b{
+  display:block;font-family:var(--font-display);font-size:1.7rem;color:var(--text);
+}
+.hero-meta .stat span{font-size:.78rem;color:var(--text-faint);}
+
+/* wheel svg accent */
+.wheel-accent{position:absolute;right:0;top:60px;opacity:.5;pointer-events:none;}
+html.light .wheel-accent{opacity:.25;}
+
+/* ============ SECTIONS ============ */
+section.obj{
+  padding:64px 0 10px;
+  border-bottom:1px solid var(--line-soft);
+  scroll-margin-top:80px;
+}
+.obj-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:6px;}
+.obj-title-row{display:flex;align-items:center;gap:14px;}
+.obj-icon{
+  width:44px;height:44px;border-radius:10px;
+  background:var(--bg-card);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0;
+}
+.obj h2{
+  font-family:var(--font-display);font-size:1.9rem;margin:0;font-weight:600;
+}
+.obj .kind-label{
+  font-family:var(--font-mono);font-size:.72rem;color:var(--text-faint);
+  border:1px solid var(--line);padding:3px 9px;border-radius:20px;white-space:nowrap;
+}
+.obj .crate-id{
+  font-family:var(--font-mono);font-size:.72rem;color:var(--text-faint);letter-spacing:.05em;
+}
+.obj p.dek{color:var(--text-dim);max-width:720px;margin:16px 0 20px;font-size:.98rem;}
+.field-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;margin:20px 0 26px;
+}
+.field-grid .field{background:var(--bg-card);padding:12px 16px;}
+.field-grid .field .k{font-size:.68rem;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
+.field-grid .field .v{font-size:.85rem;color:var(--text);font-family:var(--font-mono);}
+
+/* code block */
+.code-block{
+  position:relative;background:#0D1826;border:1px solid var(--line);border-radius:10px;
+  margin:18px 0;overflow:hidden;
+}
+html.light .code-block{background:#1B2534;}
+.code-block .bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px;border-bottom:1px solid var(--line);
+  font-family:var(--font-mono);font-size:.72rem;color:var(--text-faint);
+}
+.code-block .bar .dots{display:flex;gap:5px;}
+.code-block .bar .dots span{width:8px;height:8px;border-radius:50%;background:var(--line);}
+.copy-btn{
+  background:none;border:1px solid var(--line);color:var(--text-faint);
+  font-family:var(--font-mono);font-size:.68rem;padding:4px 10px;border-radius:6px;cursor:pointer;
+}
+.copy-btn:hover{color:var(--teal);border-color:var(--teal);}
+.copy-btn.copied{color:var(--teal);border-color:var(--teal);}
+pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:.83rem;line-height:1.65;}
+pre code.hljs{background:none;padding:0;}
+.code-block::-webkit-scrollbar{height:6px;}
+
+.note{
+  display:flex;gap:12px;background:var(--bg-card);border:1px solid var(--line);
+  border-left:3px solid var(--teal);border-radius:8px;padding:14px 16px;margin:20px 0;font-size:.88rem;color:var(--text-dim);
+}
+.note.warn{border-left-color:var(--accent);}
+.note b{color:var(--text);}
+
+/* tree view */
+.tree{
+  font-family:var(--font-mono);font-size:.85rem;background:var(--bg-card);
+  border:1px solid var(--line);border-radius:10px;padding:20px 24px;margin:20px 0;
+  overflow-x:auto;white-space:pre;color:var(--text-dim);
+}
+.tree .dir{color:var(--blue);font-weight:600;}
+.tree .file{color:var(--text);}
+.tree .comment{color:var(--text-faint);}
+
+/* helm hero divider */
+.helm-intro{
+  display:flex;gap:36px;align-items:center;flex-wrap:wrap;margin:26px 0 10px;
+}
+.helm-badge{
+  width:120px;height:120px;flex-shrink:0;
+}
+
+/* cheatsheet table */
+.cheat-table{width:100%;border-collapse:collapse;margin:18px 0;font-size:.85rem;}
+.cheat-table th{
+  text-align:left;font-family:var(--font-mono);font-size:.68rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-faint);padding:8px 12px;border-bottom:1px solid var(--line);
+}
+.cheat-table td{padding:10px 12px;border-bottom:1px solid var(--line-soft);color:var(--text-dim);}
+.cheat-table td code{color:var(--teal);background:var(--bg-card);padding:2px 6px;border-radius:4px;font-size:.82rem;}
+.cheat-table tr:hover td{color:var(--text);}
+
+/* footer */
+footer{
+  padding:50px 40px;border-top:1px solid var(--line);text-align:center;
+  color:var(--text-faint);font-size:.82rem;font-family:var(--font-mono);
+}
+
+/* back to top */
+.top-link{
+  position:fixed;bottom:24px;right:24px;z-index:40;
+  width:44px;height:44px;border-radius:50%;background:var(--accent);color:#0A1520;
+  display:flex;align-items:center;justify-content:center;text-decoration:none;
+  box-shadow:0 6px 20px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.top-link.show{opacity:1;pointer-events:auto;}
+
+@media (max-width:960px){
+  .sidebar{
+    position:fixed;left:0;top:65px;bottom:0;background:var(--bg-deep);z-index:45;
+    transform:translateX(-100%);transition:transform .25s ease;width:82vw;max-width:320px;
+    box-shadow:10px 0 30px rgba(0,0,0,.4);
+  }
+  .sidebar.open{transform:translateX(0);}
+  .menu-toggle{display:flex;align-items:center;justify-content:center;}
+  .search-box{display:none;}
+  .main{padding:0 18px 80px;}
+  .hero{padding:40px 0 34px;}
+  .wheel-accent{display:none;}
+}
+</style>
+</head>
+<body>
+<div class="blueprint-bg"></div>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="brand"><span class="stamp">K8</span> The Manifest</div>
+  </div>
+  <div class="topbar-right">
+    <div class="search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Filter objects…">
+    </div>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="themeIcon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="sidebar" id="sidebar">
+    <div class="manifest-label">Manifest</div>
+    <a class="nav-item" data-cat="overview" href="#overview"><span class="tag">00</span>Cluster overview</a>
+
+    <div class="manifest-label">Workloads</div>
+    <a class="nav-item" data-cat="workload" href="#pod"><span class="tag">01</span>Pod</a>
+    <a class="nav-item" data-cat="workload" href="#replicaset"><span class="tag">02</span>ReplicaSet</a>
+    <a class="nav-item" data-cat="workload" href="#deployment"><span class="tag">03</span>Deployment</a>
+    <a class="nav-item" data-cat="workload" href="#statefulset"><span class="tag">04</span>StatefulSet</a>
+    <a class="nav-item" data-cat="workload" href="#daemonset"><span class="tag">05</span>DaemonSet</a>
+    <a class="nav-item" data-cat="workload" href="#job"><span class="tag">06</span>Job</a>
+    <a class="nav-item" data-cat="workload" href="#cronjob"><span class="tag">07</span>CronJob</a>
+
+    <div class="manifest-label">Config &amp; storage</div>
+    <a class="nav-item" data-cat="config" href="#configmap"><span class="tag">08</span>ConfigMap</a>
+    <a class="nav-item" data-cat="config" href="#secret"><span class="tag">09</span>Secret</a>
+    <a class="nav-item" data-cat="config" href="#pv"><span class="tag">10</span>PersistentVolume</a>
+    <a class="nav-item" data-cat="config" href="#pvc"><span class="tag">11</span>PersistentVolumeClaim</a>
+    <a class="nav-item" data-cat="config" href="#storageclass"><span class="tag">12</span>StorageClass</a>
+
+    <div class="manifest-label">Networking</div>
+    <a class="nav-item" data-cat="network" href="#service"><span class="tag">13</span>Service</a>
+    <a class="nav-item" data-cat="network" href="#ingress"><span class="tag">14</span>Ingress</a>
+    <a class="nav-item" data-cat="network" href="#networkpolicy"><span class="tag">15</span>NetworkPolicy</a>
+
+    <div class="manifest-label">Access control</div>
+    <a class="nav-item" data-cat="rbac" href="#serviceaccount"><span class="tag">16</span>ServiceAccount</a>
+    <a class="nav-item" data-cat="rbac" href="#role"><span class="tag">17</span>Role &amp; RoleBinding</a>
+    <a class="nav-item" data-cat="rbac" href="#clusterrole"><span class="tag">18</span>ClusterRole &amp; Binding</a>
+
+    <div class="manifest-label">Cluster policy</div>
+    <a class="nav-item" data-cat="policy" href="#namespace"><span class="tag">19</span>Namespace</a>
+    <a class="nav-item" data-cat="policy" href="#resourcequota"><span class="tag">20</span>ResourceQuota</a>
+    <a class="nav-item" data-cat="policy" href="#limitrange"><span class="tag">21</span>LimitRange</a>
+    <a class="nav-item" data-cat="policy" href="#hpa"><span class="tag">22</span>HorizontalPodAutoscaler</a>
+
+    <div class="manifest-label">Helm</div>
+    <a class="nav-item" data-cat="helm" href="#helm-overview"><span class="tag">H0</span>What Helm is</a>
+    <a class="nav-item" data-cat="helm" href="#helm-structure"><span class="tag">H1</span>Chart folder structure</a>
+    <a class="nav-item" data-cat="helm" href="#helm-chartyaml"><span class="tag">H2</span>Chart.yaml</a>
+    <a class="nav-item" data-cat="helm" href="#helm-values"><span class="tag">H3</span>values.yaml</a>
+    <a class="nav-item" data-cat="helm" href="#helm-templates"><span class="tag">H4</span>templates/</a>
+    <a class="nav-item" data-cat="helm" href="#helm-helpers"><span class="tag">H5</span>_helpers.tpl</a>
+    <a class="nav-item" data-cat="helm" href="#helm-subcharts"><span class="tag">H6</span>Subcharts &amp; deps</a>
+    <a class="nav-item" data-cat="helm" href="#helm-cli"><span class="tag">H7</span>CLI cheatsheet</a>
+  </nav>
+
+  <main class="main">
+
+    <!-- ================= HERO ================= -->
+    <section class="hero" id="overview">
+      <svg class="wheel-accent" width="340" height="340" viewBox="0 0 200 200" fill="none">
+        <circle cx="100" cy="100" r="70" stroke="var(--line)" stroke-width="1.5"/>
+        <circle cx="100" cy="100" r="14" stroke="var(--accent)" stroke-width="1.5"/>
+        <g stroke="var(--line)" stroke-width="1.5">
+          <line x1="100" y1="16" x2="100" y2="184"/>
+          <line x1="16" y1="100" x2="184" y2="100"/>
+          <line x1="41" y1="41" x2="159" y2="159"/>
+          <line x1="159" y1="41" x2="41" y2="159"/>
+        </g>
+        <g fill="var(--accent)">
+          <circle cx="100" cy="30" r="4"/><circle cx="100" cy="170" r="4"/>
+          <circle cx="30" cy="100" r="4"/><circle cx="170" cy="100" r="4"/>
+        </g>
+      </svg>
+      <div class="hero-eyebrow"><span class="dot"></span>Field guide · objects, YAML &amp; Helm charts</div>
+      <h1>Every object in the cluster, <em>laid out on the deck.</em></h1>
+      <p class="lead">Kubernetes takes its name from the Greek word for helmsman. This is the manifest for the ship: every core object with working YAML, plus the full anatomy of a Helm chart — folder by folder, file by file.</p>
+      <div class="hero-meta">
+        <div class="stat"><b>22</b><span>core objects covered</span></div>
+        <div class="stat"><b>40+</b><span>runnable YAML manifests</span></div>
+        <div class="stat"><b>1</b><span>complete Helm chart, file by file</span></div>
+      </div>
+    </section>
+
+    <!-- ================= POD ================= -->
+    <section class="obj" id="pod" data-cat="workload">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <h2>Pod</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">The smallest deployable unit. One or more containers that share a network namespace and storage volumes, scheduled together onto the same node, living and dying together.</p>
+      <div class="field-grid">
+        <div class="field"><div class="k">Scope</div><div class="v">Namespaced</div></div>
+        <div class="field"><div class="k">Managed by</div><div class="v">Usually a controller</div></div>
+        <div class="field"><div class="k">Restart policy</div><div class="v">Always / OnFailure / Never</div></div>
+        <div class="field"><div class="k">Typical use</div><div class="v">Debugging, one-offs</div></div>
+      </div>
+      <div class="code-block">
+        <div class="bar"><span>pod.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: web-pod
+  namespace: default
+  labels:
+    app: web
+    tier: frontend
+spec:
+  containers:
+    - name: web
+      image: nginx:1.27-alpine
+      ports:
+        - containerPort: 80
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "250m"
+          memory: "256Mi"
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 80
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      volumeMounts:
+        - name: cache-volume
+          mountPath: /var/cache/nginx
+  volumes:
+    - name: cache-volume
+      emptyDir: {}
+  restartPolicy: Always</code></pre>
+      </div>
+      <div class="note">In production, you almost never create bare Pods directly — a Deployment or StatefulSet creates and supervises them for you.</div>
+    </section>
+
+    <!-- ================= REPLICASET ================= -->
+    <section class="obj" id="replicaset" data-cat="workload">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></div>
+          <h2>ReplicaSet</h2>
+        </div>
+        <span class="kind-label">apps/v1</span>
+      </div>
+      <p class="dek">Keeps a stable number of identical Pods running. Rarely written by hand — a Deployment generates and owns one for you on every rollout.</p>
+      <div class="code-block">
+        <div class="bar"><span>replicaset.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: web-rs
+  labels:
+    app: web
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= DEPLOYMENT ================= -->
+    <section class="obj" id="deployment" data-cat="workload">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v6M12 16v6M4.9 4.9l4.2 4.2M14.9 14.9l4.2 4.2M2 12h6M16 12h6M4.9 19.1l4.2-4.2M14.9 9.1l4.2-4.2"/></svg></div>
+          <h2>Deployment</h2>
+        </div>
+        <span class="kind-label">apps/v1</span>
+      </div>
+      <p class="dek">The workhorse. Declares a desired state for stateless Pods and rolls changes out gradually, with rollback built in. Owns a ReplicaSet, which owns the Pods.</p>
+      <div class="code-block">
+        <div class="bar"><span>deployment.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  labels:
+    app: web
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: myregistry/web:1.4.2
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: web-config
+          resources:
+            requests: { cpu: "150m", memory: "192Mi" }
+            limits: { cpu: "500m", memory: "384Mi" }
+          readinessProbe:
+            httpGet: { path: /ready, port: 8080 }
+            initialDelaySeconds: 3</code></pre>
+      </div>
+      <div class="note"><b>Rollout in one line:</b> <code>kubectl rollout undo deployment/web-deployment</code> reverts to the prior ReplicaSet if a release goes bad.</div>
+    </section>
+
+    <!-- ================= STATEFULSET ================= -->
+    <section class="obj" id="statefulset" data-cat="workload">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="5" rx="1"/><rect x="4" y="10" width="16" height="5" rx="1"/><rect x="4" y="17" width="16" height="4" rx="1"/></svg></div>
+          <h2>StatefulSet</h2>
+        </div>
+        <span class="kind-label">apps/v1</span>
+      </div>
+      <p class="dek">For workloads that need stable identity: a fixed name, a fixed network address, and a dedicated volume per replica that survives rescheduling. Databases, brokers, anything with "which one am I" logic.</p>
+      <div class="code-block">
+        <div class="bar"><span>statefulset.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pg
+spec:
+  serviceName: "pg-headless"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pg
+  template:
+    metadata:
+      labels:
+        app: pg
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: db
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-secret
+                  key: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 20Gi</code></pre>
+      </div>
+      <div class="note">Pods get names <code>pg-0</code>, <code>pg-1</code>, <code>pg-2</code> — created and scaled down in that strict order, each bound to its own PersistentVolumeClaim.</div>
+    </section>
+
+    <!-- ================= DAEMONSET ================= -->
+    <section class="obj" id="daemonset" data-cat="workload">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="16" width="20" height="4" rx="1"/></svg></div>
+          <h2>DaemonSet</h2>
+        </div>
+        <span class="kind-label">apps/v1</span>
+      </div>
+      <p class="dek">Runs exactly one copy of a Pod on every (or every matching) node. The default choice for log shippers, node monitoring agents, and CNI plugins.</p>
+      <div class="code-block">
+        <div class="bar"><span>daemonset.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-log-agent
+spec:
+  selector:
+    matchLabels:
+      app: log-agent
+  template:
+    metadata:
+      labels:
+        app: log-agent
+    spec:
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      containers:
+        - name: fluentbit
+          image: fluent/fluent-bit:3.0
+          volumeMounts:
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= JOB ================= -->
+    <section class="obj" id="job" data-cat="workload">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <h2>Job</h2>
+        </div>
+        <span class="kind-label">batch/v1</span>
+      </div>
+      <p class="dek">Runs Pods to completion. Once the specified number finish successfully, the Job is done — no restart, no rescheduling.</p>
+      <div class="code-block">
+        <div class="bar"><span>job.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+spec:
+  backoffLimit: 3
+  completions: 1
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: myregistry/migrator:2.1
+          command: ["./migrate", "up"]
+      restartPolicy: Never</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= CRONJOB ================= -->
+    <section class="obj" id="cronjob" data-cat="workload">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+          <h2>CronJob</h2>
+        </div>
+        <span class="kind-label">batch/v1</span>
+      </div>
+      <p class="dek">Schedules a Job on a cron expression — nightly backups, hourly reports, periodic cleanup.</p>
+      <div class="code-block">
+        <div class="bar"><span>cronjob.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-backup
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              image: myregistry/backup-tool:1.0
+              args: ["--target", "s3://backups/nightly"]
+          restartPolicy: OnFailure</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= CONFIGMAP ================= -->
+    <section class="obj" id="configmap" data-cat="config">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 9v11"/></svg></div>
+          <h2>ConfigMap</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">Non-secret configuration as key-value pairs, injected as environment variables or mounted as files — kept separate from the container image.</p>
+      <div class="code-block">
+        <div class="bar"><span>configmap.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-config
+data:
+  LOG_LEVEL: "info"
+  FEATURE_FLAG_NEW_UI: "true"
+  nginx.conf: |
+    server {
+      listen 80;
+      location /healthz { return 200; }
+    }</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= SECRET ================= -->
+    <section class="obj" id="secret" data-cat="config">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+          <h2>Secret</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">Like a ConfigMap, but for sensitive values — base64-encoded at rest, and only decoded when mounted into a Pod. Base64 is encoding, not encryption; pair it with a KMS-backed provider or sealed-secrets for real protection.</p>
+      <div class="code-block">
+        <div class="bar"><span>secret.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: Secret
+metadata:
+  name: pg-secret
+type: Opaque
+data:
+  username: cG9zdGdyZXM=   # base64 for "postgres"
+  password: c3VwZXJzZWNyZXQ=</code></pre>
+      </div>
+      <div class="note warn">Never commit real Secret manifests to version control. Use <code>--dry-run=client -o yaml</code>, a sealed-secrets controller, or an external secrets operator instead.</div>
+    </section>
+
+    <!-- ================= PV ================= -->
+    <section class="obj" id="pv" data-cat="config">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></svg></div>
+          <h2>PersistentVolume</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">A piece of storage in the cluster, provisioned by an admin or dynamically by a StorageClass — a resource that outlives any single Pod.</p>
+      <div class="code-block">
+        <div class="bar"><span>pv.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-data-01
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: fast-ssd
+  hostPath:
+    path: /mnt/disks/data01</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= PVC ================= -->
+    <section class="obj" id="pvc" data-cat="config">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <h2>PersistentVolumeClaim</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">A request for storage by a Pod — binds to a matching PersistentVolume, or triggers dynamic provisioning through a StorageClass.</p>
+      <div class="code-block">
+        <div class="bar"><span>pvc.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: web-uploads
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 5Gi</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= STORAGECLASS ================= -->
+    <section class="obj" id="storageclass" data-cat="config">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/></svg></div>
+          <h2>StorageClass</h2>
+        </div>
+        <span class="kind-label">storage.k8s.io/v1</span>
+      </div>
+      <p class="dek">A named "profile" for dynamic provisioning — which storage backend to use, and how, so PersistentVolumeClaims don't need to know the details.</p>
+      <div class="code-block">
+        <div class="bar"><span>storageclass.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp3
+  fsType: ext4
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= SERVICE ================= -->
+    <section class="obj" id="service" data-cat="network">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg></div>
+          <h2>Service</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">A stable network identity and load balancer in front of a shifting set of Pods, matched by label selector. Three shapes cover most cases.</p>
+      <div class="code-block">
+        <div class="bar"><span>service-clusterip.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: web-svc
+spec:
+  type: ClusterIP        # internal only — the default
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 8080</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="bar"><span>service-nodeport.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: web-svc-nodeport
+spec:
+  type: NodePort         # exposes a port on every node
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30080</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="bar"><span>service-loadbalancer.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: web-svc-lb
+spec:
+  type: LoadBalancer     # provisions a cloud load balancer
+  selector:
+    app: web
+  ports:
+    - port: 443
+      targetPort: 8080</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= INGRESS ================= -->
+    <section class="obj" id="ingress" data-cat="network">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h6l3-9 3 18 3-9h6"/></svg></div>
+          <h2>Ingress</h2>
+        </div>
+        <span class="kind-label">networking.k8s.io/v1</span>
+      </div>
+      <p class="dek">HTTP(S) routing rules from outside the cluster to internal Services — host and path based, usually with TLS termination. Requires an Ingress controller to actually do anything.</p>
+      <div class="code-block">
+        <div class="bar"><span>ingress.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["app.example.com"]
+      secretName: app-tls
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-svc
+                port:
+                  number: 80</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= NETWORKPOLICY ================= -->
+    <section class="obj" id="networkpolicy" data-cat="network">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <h2>NetworkPolicy</h2>
+        </div>
+        <span class="kind-label">networking.k8s.io/v1</span>
+      </div>
+      <p class="dek">Firewall rules for Pod-to-Pod traffic. Without any policy, all Pods can reach all Pods — this locks that down to an explicit allow-list.</p>
+      <div class="code-block">
+        <div class="bar"><span>networkpolicy.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-to-db
+spec:
+  podSelector:
+    matchLabels:
+      app: pg
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: web
+      ports:
+        - protocol: TCP
+          port: 5432</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= SERVICEACCOUNT ================= -->
+    <section class="obj" id="serviceaccount" data-cat="rbac">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+          <h2>ServiceAccount</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">An identity a Pod uses when talking to the API server — the "who" that RBAC rules attach to.</p>
+      <div class="code-block">
+        <div class="bar"><span>serviceaccount.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: web-runner
+  namespace: default</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= ROLE ================= -->
+    <section class="obj" id="role" data-cat="rbac">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></div>
+          <h2>Role &amp; RoleBinding</h2>
+        </div>
+        <span class="kind-label">rbac.authorization.k8s.io/v1</span>
+      </div>
+      <p class="dek">A Role lists permitted verbs on resources, scoped to one namespace. A RoleBinding grants that Role to a user, group, or ServiceAccount.</p>
+      <div class="code-block">
+        <div class="bar"><span>role.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="bar"><span>rolebinding.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods-binding
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: web-runner
+    namespace: default
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= CLUSTERROLE ================= -->
+    <section class="obj" id="clusterrole" data-cat="rbac">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg></div>
+          <h2>ClusterRole &amp; ClusterRoleBinding</h2>
+        </div>
+        <span class="kind-label">rbac.authorization.k8s.io/v1</span>
+      </div>
+      <p class="dek">Same idea as Role/RoleBinding, but cluster-wide — for cluster-scoped resources like Nodes, or permissions that apply across every namespace.</p>
+      <div class="code-block">
+        <div class="bar"><span>clusterrole.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-viewer
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-viewer-binding
+subjects:
+  - kind: ServiceAccount
+    name: web-runner
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: node-viewer
+  apiGroup: rbac.authorization.k8s.io</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= NAMESPACE ================= -->
+    <section class="obj" id="namespace" data-cat="policy">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg></div>
+          <h2>Namespace</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">A virtual partition of the cluster — scopes names, quotas, and RBAC so multiple teams or environments can share one cluster without colliding.</p>
+      <div class="code-block">
+        <div class="bar"><span>namespace.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: Namespace
+metadata:
+  name: staging
+  labels:
+    env: staging</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= RESOURCEQUOTA ================= -->
+    <section class="obj" id="resourcequota" data-cat="policy">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V3h16v18"/><path d="M9 21v-6h6v6"/></svg></div>
+          <h2>ResourceQuota</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">Caps the total compute and object counts a namespace can consume — the guardrail that stops one team from starving the rest of the cluster.</p>
+      <div class="code-block">
+        <div class="bar"><span>resourcequota.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: staging-quota
+  namespace: staging
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "20"</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= LIMITRANGE ================= -->
+    <section class="obj" id="limitrange" data-cat="policy">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg></div>
+          <h2>LimitRange</h2>
+        </div>
+        <span class="kind-label">core/v1</span>
+      </div>
+      <p class="dek">Sets default and min/max compute requests per container within a namespace — so a Pod that forgets to set resources doesn't get scheduled unbounded.</p>
+      <div class="code-block">
+        <div class="bar"><span>limitrange.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default-limits
+  namespace: staging
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "250m"
+        memory: "256Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      max:
+        cpu: "1"
+        memory: "1Gi"</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= HPA ================= -->
+    <section class="obj" id="hpa" data-cat="policy">
+      <div class="obj-head">
+        <div class="obj-title-row">
+          <div class="obj-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></div>
+          <h2>HorizontalPodAutoscaler</h2>
+        </div>
+        <span class="kind-label">autoscaling/v2</span>
+      </div>
+      <p class="dek">Watches a metric — usually CPU or memory utilization — and adjusts the replica count on a Deployment or StatefulSet to match.</p>
+      <div class="code-block">
+        <div class="bar"><span>hpa.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web-deployment
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= HELM SECTION ================= -->
+    <section class="obj" id="helm-overview" data-cat="helm" style="border-top:1px solid var(--line);margin-top:20px;padding-top:70px;">
+      <div class="helm-intro">
+        <svg class="helm-badge" viewBox="0 0 100 100" fill="none">
+          <circle cx="50" cy="50" r="34" stroke="var(--accent)" stroke-width="2"/>
+          <circle cx="50" cy="50" r="8" stroke="var(--accent)" stroke-width="2"/>
+          <g stroke="var(--accent)" stroke-width="2">
+            <line x1="50" y1="16" x2="50" y2="84"/>
+            <line x1="16" y1="50" x2="84" y2="50"/>
+            <line x1="26" y1="26" x2="74" y2="74"/>
+            <line x1="74" y1="26" x2="26" y2="74"/>
+          </g>
+        </svg>
+        <div>
+          <div class="hero-eyebrow"><span class="dot" style="background:var(--accent);box-shadow:0 0 8px var(--accent);"></span>Package manager for Kubernetes</div>
+          <h2 style="font-family:var(--font-display);font-size:2.1rem;margin:0 0 12px;">Helm — the actual ship's wheel</h2>
+          <p class="dek" style="margin:0;max-width:680px;">Helm packages a set of YAML manifests into a versioned, templated, installable unit called a <b style="color:var(--text)">chart</b>. Instead of hand-editing a dozen files per environment, you fill in one <code>values.yaml</code> and Helm renders the rest.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="obj" id="helm-structure" data-cat="helm">
+      <div class="obj-head"><div class="obj-title-row"><h2>Chart folder structure</h2></div><span class="kind-label">helm create mychart</span></div>
+      <p class="dek">Every chart follows the same skeleton. Helm's own scaffolding command produces exactly this layout.</p>
+      <div class="tree">mychart/
+├── <span class="file">Chart.yaml</span>          <span class="comment"># chart metadata: name, version, appVersion</span>
+├── <span class="file">values.yaml</span>          <span class="comment"># default configuration values</span>
+├── <span class="file">values.schema.json</span>   <span class="comment"># optional — validates values.yaml</span>
+├── <span class="file">.helmignore</span>          <span class="comment"># patterns excluded when packaging</span>
+├── <span class="dir">charts/</span>              <span class="comment"># subcharts / vendored dependencies</span>
+├── <span class="dir">templates/</span>            <span class="comment"># Kubernetes manifests, templated</span>
+│   ├── <span class="file">deployment.yaml</span>
+│   ├── <span class="file">service.yaml</span>
+│   ├── <span class="file">ingress.yaml</span>
+│   ├── <span class="file">configmap.yaml</span>
+│   ├── <span class="file">serviceaccount.yaml</span>
+│   ├── <span class="file">hpa.yaml</span>
+│   ├── <span class="file">_helpers.tpl</span>     <span class="comment"># reusable named templates</span>
+│   ├── <span class="file">NOTES.txt</span>         <span class="comment"># post-install usage message</span>
+│   └── <span class="dir">tests/</span>
+│       └── <span class="file">test-connection.yaml</span>
+└── <span class="dir">crds/</span>               <span class="comment"># CustomResourceDefinitions, applied first</span></div>
+      <div class="note">Anything under <code>templates/</code> is run through Go's templating engine before being sent to the API server. Everything else — <code>Chart.yaml</code>, <code>charts/</code>, <code>crds/</code> — is not templated.</div>
+    </section>
+
+    <section class="obj" id="helm-chartyaml" data-cat="helm">
+      <div class="obj-head"><div class="obj-title-row"><h2>Chart.yaml</h2></div><span class="kind-label">metadata</span></div>
+      <p class="dek">Identity and version info for the chart itself — separate from the version of the application it deploys.</p>
+      <div class="code-block">
+        <div class="bar"><span>Chart.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v2
+name: mychart
+description: A Helm chart for the web application
+type: application
+version: 1.4.0          # chart version — bump on any template change
+appVersion: "1.2.3"      # version of the app being deployed
+kubeVersion: ">=1.25.0-0"
+keywords:
+  - web
+  - api
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
+dependencies:
+  - name: redis
+    version: "18.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled</code></pre>
+      </div>
+    </section>
+
+    <section class="obj" id="helm-values" data-cat="helm">
+      <div class="obj-head"><div class="obj-title-row"><h2>values.yaml</h2></div><span class="kind-label">defaults</span></div>
+      <p class="dek">The single file most people edit per environment. Every value here is reachable in templates as <code>.Values.&lt;path&gt;</code>.</p>
+      <div class="code-block">
+        <div class="bar"><span>values.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">replicaCount: 3
+
+image:
+  repository: myregistry/web
+  tag: "1.4.2"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: ""
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  host: app.example.com
+  tls: true
+
+resources:
+  requests:
+    cpu: 150m
+    memory: 192Mi
+  limits:
+    cpu: 500m
+    memory: 384Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 65
+
+redis:
+  enabled: false</code></pre>
+      </div>
+      <div class="note">Override any of it at install time without touching the file: <code>helm install web ./mychart --set image.tag=1.4.3 --set replicaCount=5</code></div>
+    </section>
+
+    <section class="obj" id="helm-templates" data-cat="helm">
+      <div class="obj-head"><div class="obj-title-row"><h2>templates/</h2></div><span class="kind-label">rendered manifests</span></div>
+      <p class="dek">Ordinary Kubernetes YAML with Go template expressions dropped in. Helm renders every file here against <code>values.yaml</code> before applying it.</p>
+      <div class="code-block">
+        <div class="bar"><span>templates/deployment.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mychart.fullname" . }}
+  labels:
+    {{- include "mychart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mychart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mychart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "mychart.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="bar"><span>templates/service.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mychart.fullname" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+  selector:
+    {{- include "mychart.selectorLabels" . | nindent 4 }}</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="bar"><span>templates/ingress.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "mychart.fullname" . }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    - hosts: [{{ .Values.ingress.host }}]
+      secretName: {{ include "mychart.fullname" . }}-tls
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "mychart.fullname" . }}
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="bar"><span>templates/hpa.yaml</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "mychart.fullname" . }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "mychart.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}</code></pre>
+      </div>
+      <div class="code-block">
+        <div class="bar"><span>templates/NOTES.txt</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">Chart "{{ .Chart.Name }}" installed as release "{{ .Release.Name }}".
+
+Check status with:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+{{- if .Values.ingress.enabled }}
+Visit: https://{{ .Values.ingress.host }}
+{{- else }}
+Forward a local port to reach it:
+  kubectl port-forward svc/{{ include "mychart.fullname" . }} 8080:{{ .Values.service.port }}
+{{- end }}</code></pre>
+      </div>
+    </section>
+
+    <section class="obj" id="helm-helpers" data-cat="helm">
+      <div class="obj-head"><div class="obj-title-row"><h2>_helpers.tpl</h2></div><span class="kind-label">shared named templates</span></div>
+      <p class="dek">Reusable snippets, defined once with <code>define</code> and pulled into any template with <code>include</code> — the DRY layer of a chart.</p>
+      <div class="code-block">
+        <div class="bar"><span>templates/_helpers.tpl</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">{{- define "mychart.fullname" -}}
+{{- printf "%s-%s" .Release.Name .Chart.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "mychart.labels" -}}
+app.kubernetes.io/name: {{ .Chart.Name }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/version: {{ .Chart.AppVersion }}
+helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "mychart.selectorLabels" -}}
+app.kubernetes.io/name: {{ .Chart.Name }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
+
+{{- define "mychart.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create -}}
+{{ default (include "mychart.fullname" .) .Values.serviceAccount.name }}
+{{- else -}}
+{{ default "default" .Values.serviceAccount.name }}
+{{- end -}}
+{{- end -}}</code></pre>
+      </div>
+    </section>
+
+    <section class="obj" id="helm-subcharts" data-cat="helm">
+      <div class="obj-head"><div class="obj-title-row"><h2>Subcharts &amp; dependencies</h2></div><span class="kind-label">charts/</span></div>
+      <p class="dek">A chart can depend on other charts — declared in <code>Chart.yaml</code>, vendored into <code>charts/</code>, and configured from the parent's <code>values.yaml</code> under the dependency's own name.</p>
+      <div class="tree">mychart/
+├── <span class="file">Chart.yaml</span>            <span class="comment"># lists "redis" under dependencies</span>
+├── <span class="file">values.yaml</span>            <span class="comment"># has a top-level "redis:" block</span>
+└── <span class="dir">charts/</span>
+    └── <span class="dir">redis/</span>              <span class="comment"># pulled in by `helm dependency update`</span>
+        ├── <span class="file">Chart.yaml</span>
+        ├── <span class="file">values.yaml</span>
+        └── <span class="dir">templates/</span></div>
+      <div class="code-block">
+        <div class="bar"><span>values.yaml (parent, passing config down)</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-yaml">redis:
+  enabled: true
+  auth:
+    enabled: true
+    existingSecret: pg-secret
+  master:
+    persistence:
+      size: 8Gi</code></pre>
+      </div>
+      <div class="note">Run <code>helm dependency update ./mychart</code> to download declared dependencies into <code>charts/</code> as <code>.tgz</code> archives before packaging or installing.</div>
+    </section>
+
+    <section class="obj" id="helm-cli" data-cat="helm" style="border-bottom:none;">
+      <div class="obj-head"><div class="obj-title-row"><h2>CLI cheatsheet</h2></div><span class="kind-label">day to day</span></div>
+      <table class="cheat-table">
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>helm create mychart</code></td><td>Scaffold a new chart with the standard folder structure</td></tr>
+          <tr><td><code>helm lint ./mychart</code></td><td>Check the chart for structural and templating mistakes</td></tr>
+          <tr><td><code>helm template ./mychart</code></td><td>Render manifests locally without installing anything</td></tr>
+          <tr><td><code>helm install web ./mychart</code></td><td>Install the chart as a release named "web"</td></tr>
+          <tr><td><code>helm upgrade web ./mychart</code></td><td>Apply changes to an existing release</td></tr>
+          <tr><td><code>helm upgrade --install web ./mychart</code></td><td>Install if missing, upgrade if it already exists</td></tr>
+          <tr><td><code>helm rollback web 2</code></td><td>Revert the release to revision 2</td></tr>
+          <tr><td><code>helm history web</code></td><td>List every revision of a release</td></tr>
+          <tr><td><code>helm uninstall web</code></td><td>Remove the release and its resources</td></tr>
+          <tr><td><code>helm dependency update ./mychart</code></td><td>Fetch subcharts declared in Chart.yaml</td></tr>
+          <tr><td><code>helm package ./mychart</code></td><td>Bundle the chart into a versioned .tgz</td></tr>
+          <tr><td><code>helm repo add &lt;name&gt; &lt;url&gt;</code></td><td>Register a chart repository</td></tr>
+          <tr><td><code>helm show values &lt;chart&gt;</code></td><td>Print a chart's default values.yaml</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<a href="#overview" class="top-link" id="topLink" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</a>
+
+<footer>THE MANIFEST — a reference for Kubernetes objects &amp; Helm charts</footer>
+
+<script>hljs.highlightAll();</script>
+<script>
+// theme toggle
+const root = document.documentElement;
+const themeToggle = document.getElementById('themeToggle');
+const themeIcon = document.getElementById('themeIcon');
+function setIcon(){
+  themeIcon.innerHTML = root.classList.contains('light')
+    ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+}
+themeToggle.addEventListener('click', ()=>{
+  root.classList.toggle('light');
+  setIcon();
+});
+
+// mobile sidebar
+const sidebar = document.getElementById('sidebar');
+const menuToggle = document.getElementById('menuToggle');
+menuToggle.addEventListener('click', ()=> sidebar.classList.toggle('open'));
+document.querySelectorAll('.nav-item').forEach(a=>{
+  a.addEventListener('click', ()=> sidebar.classList.remove('open'));
+});
+
+// active nav highlight on scroll
+const navItems = Array.from(document.querySelectorAll('.nav-item'));
+const sections = navItems.map(n => document.querySelector(n.getAttribute('href'))).filter(Boolean);
+function onScroll(){
+  let idx = 0;
+  const y = window.scrollY + 120;
+  sections.forEach((s,i)=>{ if(s && s.offsetTop <= y) idx = i; });
+  navItems.forEach(n=>n.classList.remove('active'));
+  if(navItems[idx]) navItems[idx].classList.add('active');
+
+  const topLink = document.getElementById('topLink');
+  if(window.scrollY > 600) topLink.classList.add('show'); else topLink.classList.remove('show');
+}
+window.addEventListener('scroll', onScroll);
+onScroll();
+
+// copy buttons
+document.querySelectorAll('.copy-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const code = btn.closest('.code-block').querySelector('code').innerText;
+    navigator.clipboard.writeText(code).then(()=>{
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(()=>{ btn.textContent='Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  });
+});
+
+// filter / search
+const searchInput = document.getElementById('searchInput');
+searchInput.addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  navItems.forEach(item=>{
+    const label = item.textContent.toLowerCase();
+    item.style.display = (q === '' || label.includes(q)) ? '' : 'none';
+  });
+});
+</script>
+</body>
+</html>
